@@ -1,0 +1,167 @@
+import tkinter as tk
+from tkinter import ttk, simpledialog, messagebox
+from tkinter.font import Font
+import json
+import os
+
+class Character:
+    def __init__(self, name):
+        self.name = name
+        self.habits = []
+
+class HabitsTracker:
+    def __init__(self, master):
+        self.master = master
+        self.master.title("RPG Habits Tracker")
+        self.master.geometry("600x400")
+        self.master.configure(bg="#f0f0f0")
+        self.character = None
+
+        self.setup_styles()
+        self.create_main_menu()
+
+    def setup_styles(self):
+        self.style = ttk.Style()
+        self.style.theme_use("clam")  # Use the 'clam' theme as a base
+
+        # Custom styles
+        self.style.configure("TFrame", background="#f0f0f0")
+        self.style.configure("TButton", 
+                             padding=10, 
+                             font=("Arial", 10, "bold"),
+                             background="#4CAF50",  # Green background
+                             foreground="white")
+        self.style.map("TButton", 
+                       background=[("active", "#45a049")])  # Darker green when clicked
+
+    def create_main_menu(self):
+        self.main_frame = ttk.Frame(self.master, style="TFrame")
+        self.main_frame.pack(pady=20, padx=20, fill=tk.BOTH, expand=True)
+
+        title_label = ttk.Label(self.main_frame, text="RPG Habits Tracker", font=("Arial", 20, "bold"), background="#f0f0f0")
+        title_label.pack(pady=20)
+
+        load_button = ttk.Button(self.main_frame, text="Load Character", command=self.load_character, style="TButton")
+        load_button.pack(pady=10)
+
+        create_button = ttk.Button(self.main_frame, text="Create New Character", command=self.create_character, style="TButton")
+        create_button.pack(pady=10)
+
+    def load_character(self):
+        characters = self.get_saved_characters()
+        if not characters:
+            messagebox.showinfo("No Characters", "No saved characters found. Please create a new character.")
+            return
+
+        character_name = simpledialog.askstring("Load Character", "Enter character name to load:", initialvalue=characters[0])
+        if character_name in characters:
+            self.character = self.load_character_data(character_name)
+            self.show_habits_tracker()
+        else:
+            messagebox.showerror("Error", "Character not found.")
+
+    def create_character(self):
+        name = simpledialog.askstring("Create Character", "Enter your character's name:")
+        if name:
+            self.character = Character(name)
+            self.save_character_data()
+            self.show_habits_tracker()
+
+    def show_habits_tracker(self):
+        self.main_frame.destroy()
+        self.create_habits_tracker_ui()
+
+    def create_habits_tracker_ui(self):
+        main_frame = ttk.Frame(self.master, style="TFrame")
+        main_frame.pack(pady=20, padx=20, fill=tk.BOTH, expand=True)
+
+        # Custom font for the listbox
+        listbox_font = Font(family="Arial", size=12)
+
+        self.listbox = tk.Listbox(main_frame, 
+                                  font=listbox_font,
+                                  bg="white", 
+                                  fg="#333333",
+                                  selectbackground="#4CAF50",
+                                  selectforeground="white",
+                                  highlightthickness=0,
+                                  bd=0)
+        self.listbox.pack(pady=10, padx=10, fill=tk.BOTH, expand=True)
+
+        button_frame = ttk.Frame(main_frame, style="TFrame")
+        button_frame.pack(pady=10, fill=tk.X)
+
+        add_button = ttk.Button(button_frame, text="Add Habit", command=self.add_habit, style="TButton")
+        add_button.pack(side=tk.LEFT, padx=(0, 5))
+
+        rename_button = ttk.Button(button_frame, text="Rename Habit", command=self.rename_habit, style="TButton")
+        rename_button.pack(side=tk.LEFT, padx=5)
+
+        delete_button = ttk.Button(button_frame, text="Delete Habit", command=self.delete_habit, style="TButton")
+        delete_button.pack(side=tk.LEFT, padx=(5, 0))
+
+        # Add a label to show the character's name
+        character_label = ttk.Label(main_frame, text=f"Character: {self.character.name}", font=("Arial", 14, "bold"), background="#f0f0f0")
+        character_label.pack(pady=(0, 10))
+
+        self.update_listbox()
+
+    def add_habit(self):
+        habit = simpledialog.askstring("Add Habit", "Enter new habit:")
+        if habit:
+            self.character.habits.append(habit)
+            self.update_listbox()
+            self.save_character_data()
+
+    def rename_habit(self):
+        selected = self.listbox.curselection()
+        if selected:
+            index = selected[0]
+            old_habit = self.character.habits[index]
+            new_habit = simpledialog.askstring("Rename Habit", f"Rename '{old_habit}' to:")
+            if new_habit:
+                self.character.habits[index] = new_habit
+                self.update_listbox()
+                self.save_character_data()
+        else:
+            messagebox.showwarning("Warning", "Please select a habit to rename.")
+
+    def delete_habit(self):
+        selected = self.listbox.curselection()
+        if selected:
+            index = selected[0]
+            habit = self.character.habits[index]
+            if messagebox.askyesno("Delete Habit", f"Are you sure you want to delete '{habit}'?"):
+                del self.character.habits[index]
+                self.update_listbox()
+                self.save_character_data()
+        else:
+            messagebox.showwarning("Warning", "Please select a habit to delete.")
+
+    def update_listbox(self):
+        self.listbox.delete(0, tk.END)
+        for habit in self.character.habits:
+            self.listbox.insert(tk.END, habit)
+
+    def save_character_data(self):
+        data = {
+            "name": self.character.name,
+            "habits": self.character.habits
+        }
+        with open(f"{self.character.name}.json", "w") as f:
+            json.dump(data, f)
+
+    def load_character_data(self, name):
+        with open(f"{name}.json", "r") as f:
+            data = json.load(f)
+        character = Character(data["name"])
+        character.habits = data["habits"]
+        return character
+
+    def get_saved_characters(self):
+        return [f.split('.')[0] for f in os.listdir() if f.endswith('.json')]
+
+if __name__ == "__main__":
+    root = tk.Tk()
+    app = HabitsTracker(root)
+    root.mainloop()
