@@ -1,217 +1,15 @@
-import tkinter as tk
-from tkinter import ttk, simpledialog, messagebox
-from tkinter.font import Font
-import json
-import os
-
-class Character:
-    def __init__(self, name):
-        self.name = name
-        self.habits = []
-        self.level = 1
-        self.xp = 0
-        self.reward_points = 0
-        self.stats = {
-            "Strength": 1,
-            "Dexterity": 1,
-            "Vitality": 1,
-            "Intelligence": 1,
-            "Magic": 1,
-            "Charisma": 1
-        }
-
-class Habit:
-    def __init__(self, name, category, xp_points):
-        self.name = name
-        self.category = category
-        self.xp_points = xp_points
-
 class HabitsTracker:
-    def __init__(self, master):
-        self.master = master
-        self.master.title("RPG Habits Tracker")
-        self.master.geometry("800x600")
-        self.master.configure(bg="#f0f0f0")
-        self.character = None
-        self.categories = ["Strength", "Dexterity", "Vitality", "Intelligence", "Magic", "Charisma"]
+    # ... (other methods remain unchanged)
 
-        self.setup_styles()
-        self.create_main_menu()
-        self.create_habits_tracker_ui()
-        self.create_character_profile_ui()
-        self.update_points_labels()  # Add this line to initialize labels
+    def points_for_next_stat_level(self, stat):
+        current_level = self.get_stat_level(stat)
+        return 10 + (current_level - 1) * 7
 
-    def setup_styles(self):
-        self.style = ttk.Style()
-        self.style.theme_use("clam")  # Use the 'clam' theme as a base
-
-        # Custom styles
-        self.style.configure("TFrame", background="#f0f0f0")
-        self.style.configure("TButton", 
-                             padding=10, 
-                             font=("Arial", 10, "bold"),
-                             background="#4CAF50",  # Green background
-                             foreground="white")
-        self.style.map("TButton", 
-                       background=[("active", "#45a049")])  # Darker green when clicked
-
-    def create_main_menu(self):
-        self.main_frame = ttk.Frame(self.master, style="TFrame")
-        self.main_frame.pack(pady=20, padx=20, fill=tk.BOTH, expand=True)
-
-        title_label = ttk.Label(self.main_frame, text="RPG Habits Tracker", font=("Arial", 20, "bold"), background="#f0f0f0")
-        title_label.pack(pady=20)
-
-        load_button = ttk.Button(self.main_frame, text="Load Character", command=self.load_character, style="TButton")
-        load_button.pack(pady=10)
-
-        create_button = ttk.Button(self.main_frame, text="Create New Character", command=self.create_character, style="TButton")
-        create_button.pack(pady=10)
-
-    def load_character(self):
-        characters = self.get_saved_characters()
-        if not characters:
-            messagebox.showinfo("No Characters", "No saved characters found. Please create a new character.")
-            return
-
-        character_name = simpledialog.askstring("Load Character", "Enter character name to load:", initialvalue=characters[0])
-        if character_name in characters:
-            self.character = self.load_character_data(character_name)
-            self.show_habits_tracker()
-        else:
-            messagebox.showerror("Error", "Character not found.")
-
-    def create_character(self):
-        name = simpledialog.askstring("Create Character", "Enter your character's name:")
-        if name:
-            self.character = Character(name)
-            self.save_character_data()
-            self.show_habits_tracker()
-
-    def show_habits_tracker(self):
-        self.main_frame.destroy()
-        self.create_notebook_ui()
-
-    def create_notebook_ui(self):
-        self.notebook = ttk.Notebook(self.master)
-        self.notebook.pack(fill=tk.BOTH, expand=True)
-
-        self.habits_frame = ttk.Frame(self.notebook)
-        self.character_frame = ttk.Frame(self.notebook)
-
-        self.notebook.add(self.habits_frame, text="Habits")
-        self.notebook.add(self.character_frame, text="Character")
-
-        self.create_habits_tracker_ui()
-        self.create_character_profile_ui()
-        self.update_points_labels()  # Add this line to update labels when switching tabs
-
-    def create_habits_tracker_ui(self):
-        main_frame = ttk.Frame(self.habits_frame, style="TFrame")
-        main_frame.pack(pady=20, padx=20, fill=tk.BOTH, expand=True)
-
-        # Custom font for the listbox
-        listbox_font = Font(family="Arial", size=12)
-
-        self.listbox = tk.Listbox(main_frame, 
-                                  font=listbox_font,
-                                  bg="white", 
-                                  fg="#333333",
-                                  selectbackground="#4CAF50",
-                                  selectforeground="white",
-                                  highlightthickness=0,
-                                  bd=0)
-        self.listbox.pack(pady=10, padx=10, fill=tk.BOTH, expand=True)
-        self.listbox.bind('<Double-1>', self.on_habit_double_click)  # Add this line for double-click
-
-        button_frame = ttk.Frame(main_frame, style="TFrame")
-        button_frame.pack(pady=10, fill=tk.X)
-
-        add_button = ttk.Button(button_frame, text="Add Habit", command=self.add_habit, style="TButton")
-        add_button.pack(side=tk.LEFT, padx=(0, 5))
-
-        complete_button = ttk.Button(button_frame, text="Complete Habit", command=self.complete_habit, style="TButton")
-        complete_button.pack(side=tk.LEFT, padx=5)
-
-        rename_button = ttk.Button(button_frame, text="Rename Habit", command=self.rename_habit, style="TButton")
-        rename_button.pack(side=tk.LEFT, padx=5)
-
-        delete_button = ttk.Button(button_frame, text="Delete Habit", command=self.delete_habit, style="TButton")
-        delete_button.pack(side=tk.LEFT, padx=(5, 0))
-
-        # Add labels to show XP and Reward Points
-        points_frame = ttk.Frame(main_frame, style="TFrame")
-        points_frame.pack(pady=10, fill=tk.X, side=tk.BOTTOM)
-
-        self.xp_label = ttk.Label(points_frame, text=f"XP: {self.character.xp}", font=("Arial", 12))
-        self.xp_label.pack(side=tk.RIGHT, padx=(0, 10))
-
-        self.reward_points_label = ttk.Label(points_frame, text=f"Reward Points: {self.character.reward_points}", font=("Arial", 12))
-        self.reward_points_label.pack(side=tk.RIGHT, padx=(0, 10))
-
-        # Add a label to show the character's name
-        character_label = ttk.Label(main_frame, text=f"Character: {self.character.name}", font=("Arial", 14, "bold"), background="#f0f0f0")
-        character_label.pack(pady=(0, 10))
-
-        self.update_listbox()
-
-    def create_character_profile_ui(self):
-        profile_frame = ttk.Frame(self.character_frame, style="TFrame")
-        profile_frame.pack(pady=20, padx=20, fill=tk.BOTH, expand=True)
-
-        name_label = ttk.Label(profile_frame, text=f"Name: {self.character.name}", font=("Arial", 14, "bold"))
-        name_label.pack(pady=5)
-
-        self.level_label = ttk.Label(profile_frame, text=f"Level: {self.character.level}", font=("Arial", 12))
-        self.level_label.pack(pady=5)
-
-        self.xp_label = ttk.Label(profile_frame, text=f"XP: {self.character.xp}", font=("Arial", 12))
-        self.xp_label.pack(pady=5)
-
-        self.reward_points_label = ttk.Label(profile_frame, text=f"Reward Points: {self.character.reward_points}", font=("Arial", 12))
-        self.reward_points_label.pack(pady=5)
-
-        stats_frame = ttk.Frame(profile_frame, style="TFrame")
-        stats_frame.pack(pady=10)
-
-        for stat, value in self.character.stats.items():
-            stat_label = ttk.Label(stats_frame, text=f"{stat}: {value}", font=("Arial", 12))
-            stat_label.pack(pady=2)
-
-    def add_habit(self):
-        habit_name = simpledialog.askstring("Add Habit", "Enter new habit:")
-        if habit_name:
-            category = self.ask_category()
-            if category:
-                xp_points = simpledialog.askinteger("XP Points", "Enter XP points for this habit:", minvalue=1)
-                if xp_points:
-                    new_habit = Habit(habit_name, category, xp_points)
-                    self.character.habits.append(new_habit)
-                    self.update_listbox()
-                    self.save_character_data()
-
-    def ask_category(self):
-        category_window = tk.Toplevel(self.master)
-        category_window.title("Select Category")
-        category_window.geometry("300x200")
-        category_window.resizable(False, False)
-
-        selected_category = tk.StringVar()
-
-        for category in self.categories:
-            rb = ttk.Radiobutton(category_window, text=category, variable=selected_category, value=category)
-            rb.pack(pady=5)
-
-        def on_select():
-            category_window.destroy()
-
-        select_button = ttk.Button(category_window, text="Select", command=on_select)
-        select_button.pack(pady=10)
-
-        category_window.grab_set()
-        self.master.wait_window(category_window)
-
-        return selected_category.get()
+    def get_stat_level(self, stat):
+        completions = self.character.stats[stat]
+        if completions < 10:
+            return 1
+        return 1 + (completions - 10) // 7 + 1
 
     def complete_habit(self, index=None):
         if index is None:
@@ -224,108 +22,29 @@ class HabitsTracker:
         habit = self.character.habits[index]
         self.character.xp += habit.xp_points
         self.character.reward_points += habit.xp_points
-        self.character.stats[habit.category] += 1
+        self.character.stats[habit.category] += 1  # Increment by 1 for each completion
+        
+        old_level = self.get_stat_level(habit.category)
+        new_level = self.get_stat_level(habit.category)
+        
+        if new_level > old_level:
+            messagebox.showinfo("Stat Level Up!", f"Your {habit.category} has increased to level {new_level}!")
+        
         self.check_level_up()
         self.update_character_profile()
         self.update_points_labels()
+        self.update_stat_bars()
         self.save_character_data()
         messagebox.showinfo("Habit Completed", f"You gained {habit.xp_points} XP and Reward Points!")
 
-    def check_level_up(self):
-        while self.character.xp >= self.xp_for_next_level():
-            self.character.xp -= self.xp_for_next_level()
-            self.character.level += 1
-            messagebox.showinfo("Level Up!", f"Congratulations! You've reached level {self.character.level}!")
-        self.update_character_profile()
+    def update_stat_bars(self):
+        for stat, (label, bar) in self.stat_bars.items():
+            completions = self.character.stats[stat]
+            level = self.get_stat_level(stat)
+            next_level_completions = self.points_for_next_stat_level(stat)
+            current_level_completions = next_level_completions - 7 if level > 1 else 0
+            progress = (completions - current_level_completions) / (next_level_completions - current_level_completions) * 100
+            label.config(text=f"{stat}: {level} ({completions}/{next_level_completions})")
+            bar["value"] = progress
 
-    def xp_for_next_level(self):
-        if self.character.level == 1:
-            return 400
-        elif self.character.level == 2:
-            return 700
-        else:
-            return 1000 + (self.character.level - 3) * 300
-
-    def update_character_profile(self):
-        self.level_label.config(text=f"Level: {self.character.level}")
-        self.xp_label.config(text=f"XP: {self.character.xp} / {self.xp_for_next_level()}")
-        self.reward_points_label.config(text=f"Reward Points: {self.character.reward_points}")
-
-        for widget in self.character_frame.winfo_children():
-            if isinstance(widget, ttk.Frame):
-                for stat_widget in widget.winfo_children():
-                    stat_name = stat_widget.cget("text").split(":")[0]
-                    stat_widget.config(text=f"{stat_name}: {self.character.stats[stat_name]}")
-
-    def rename_habit(self):
-        selected = self.listbox.curselection()
-        if selected:
-            index = selected[0]
-            old_habit = self.character.habits[index]
-            new_habit = simpledialog.askstring("Rename Habit", f"Rename '{old_habit.name}' to:")
-            if new_habit:
-                old_habit.name = new_habit
-                self.update_listbox()
-                self.save_character_data()
-        else:
-            messagebox.showwarning("Warning", "Please select a habit to rename.")
-
-    def delete_habit(self):
-        selected = self.listbox.curselection()
-        if selected:
-            index = selected[0]
-            habit = self.character.habits[index]
-            if messagebox.askyesno("Delete Habit", f"Are you sure you want to delete '{habit.name}'?"):
-                del self.character.habits[index]
-                self.update_listbox()
-                self.save_character_data()
-        else:
-            messagebox.showwarning("Warning", "Please select a habit to delete.")
-
-    def update_listbox(self):
-        self.listbox.delete(0, tk.END)
-        for habit in self.character.habits:
-            self.listbox.insert(tk.END, f"{habit.name} ({habit.category}) - XP: {habit.xp_points}")
-
-    def update_points_labels(self):
-        self.xp_label.config(text=f"XP: {self.character.xp} / {self.xp_for_next_level()}")
-        self.reward_points_label.config(text=f"Reward Points: {self.character.reward_points}")
-
-    def save_character_data(self):
-        data = {
-            "name": self.character.name,
-            "habits": [(h.name, h.category, h.xp_points) for h in self.character.habits],
-            "level": self.character.level,
-            "xp": self.character.xp,
-            "reward_points": self.character.reward_points,
-            "stats": self.character.stats
-        }
-        with open(f"{self.character.name}.json", "w") as f:
-            json.dump(data, f)
-
-    def load_character_data(self, name):
-        with open(f"{name}.json", "r") as f:
-            data = json.load(f)
-        character = Character(data["name"])
-        character.habits = [Habit(h[0], h[1], h[2]) for h in data["habits"]]
-        character.level = data["level"]
-        character.xp = data["xp"]
-        character.reward_points = data["reward_points"]
-        character.stats = data["stats"]
-        return character
-
-    def get_saved_characters(self):
-        return [f.split('.')[0] for f in os.listdir() if f.endswith('.json')]
-
-    def on_habit_double_click(self, event):
-        selected = self.listbox.curselection()
-        if selected:
-            index = selected[0]
-            habit = self.character.habits[index]
-            if messagebox.askyesno("Complete Habit", f"Did you complete '{habit.name}'?"):
-                self.complete_habit(index)
-
-if __name__ == "__main__":
-    root = tk.Tk()
-    app = HabitsTracker(root)
-    root.mainloop()
+    # ... (other methods remain unchanged)
