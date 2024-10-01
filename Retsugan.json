@@ -1,1 +1,1 @@
-{"name": "Retsugan", "habits": [["Programming", "Magic", 200]], "level": 2, "xp": 0, "reward_points": 500, "stats": {"Strength": 1, "Dexterity": 1, "Vitality": 1, "Intelligence": 1, "Magic": 401, "Charisma": 1}}
+{"name": "Retsugan", "habits": [["Programming", "Magic", 200], ["Gym Lifting Weights", "Strength", 150]], "level": 2, "xp": 500, "reward_points": 1000, "stats": {"Strength": 3, "Dexterity": 1, "Vitality": 1, "Intelligence": 1, "Magic": 4, "Charisma": 1}}

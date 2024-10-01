@@ -238,11 +238,12 @@ class HabitsTracker:
         habit = self.character.habits[index]
         self.character.xp += habit.xp_points
         self.character.reward_points += habit.xp_points
-        self.character.stats[habit.category] += habit.xp_points
+        self.character.stats[habit.category] += 1  # Increment by 1 for each completion
         
-        if self.character.stats[habit.category] >= self.points_for_next_stat_level(habit.category):
-            new_level = self.get_stat_level(habit.category)
-            self.character.stats[habit.category] = self.points_for_next_stat_level(habit.category)
+        old_level = self.get_stat_level(habit.category)
+        new_level = self.get_stat_level(habit.category)
+        
+        if new_level > old_level:
             messagebox.showinfo("Stat Level Up!", f"Your {habit.category} has increased to level {new_level}!")
         
         self.check_level_up()
@@ -254,21 +255,13 @@ class HabitsTracker:
 
     def points_for_next_stat_level(self, stat):
         current_level = self.get_stat_level(stat)
-        if current_level == 1:
-            return 100  # 10 completions of a 10-point habit
-        elif current_level == 2:
-            return 300  # 20 more completions
-        else:
-            return 300 + (current_level - 2) * 200  # 20 more completions per level
+        return 10 + (current_level - 1) * 7
 
     def get_stat_level(self, stat):
-        points = self.character.stats[stat]
-        if points < 100:
+        completions = self.character.stats[stat]
+        if completions < 10:
             return 1
-        elif points < 300:
-            return 2
-        else:
-            return 2 + (points - 300) // 200 + 1
+        return 1 + (completions - 10) // 7 + 1
 
     def check_level_up(self):
         while self.character.xp >= self.xp_for_next_level():
@@ -331,12 +324,12 @@ class HabitsTracker:
 
     def update_stat_bars(self):
         for stat, (label, bar) in self.stat_bars.items():
-            value = self.character.stats[stat]
+            completions = self.character.stats[stat]
             level = self.get_stat_level(stat)
-            next_level_points = self.points_for_next_stat_level(stat)
-            current_level_points = next_level_points - 200 if level > 1 else 0
-            progress = (value - current_level_points) / (next_level_points - current_level_points) * 100
-            label.config(text=f"{stat}: {level}")
+            next_level_completions = self.points_for_next_stat_level(stat)
+            current_level_completions = next_level_completions - 7 if level > 1 else 0
+            progress = (completions - current_level_completions) / (next_level_completions - current_level_completions) * 100
+            label.config(text=f"{stat}: {level} ({completions}/{next_level_completions})")
             bar["value"] = progress
 
     def save_character_data(self):
